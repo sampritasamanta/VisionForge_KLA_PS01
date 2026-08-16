@@ -1,0 +1,19 @@
+from pathlib import Path
+import numpy as np
+import torch
+from torch.utils.data import Dataset
+
+class PairedNPYDataset(Dataset):
+    def __init__(self,noisy_dir,gt_dir):
+        n={p.name:p for p in Path(noisy_dir).glob("*.npy")}
+        g={p.name:p for p in Path(gt_dir).glob("*.npy")}
+        names=sorted(set(n)&set(g))
+        if not names: raise RuntimeError("No matching .npy filenames found.")
+        self.items=[(n[k],g[k]) for k in names]
+    def __len__(self): return len(self.items)
+    def __getitem__(self,i):
+        npy,gt=self.items[i]
+        x=np.load(npy).astype(np.float32)
+        y=np.load(gt).astype(np.float32)
+        if x.ndim!=2 or y.ndim!=2: raise ValueError("Expected 2-D arrays.")
+        return {"input":torch.from_numpy(x)[None],"target":torch.from_numpy(y)[None],"name":npy.name}
